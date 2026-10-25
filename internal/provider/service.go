@@ -289,7 +289,7 @@ func (s *Service) APIKey(p storage.Provider) (string, error) {
 }
 
 // cliBins is the command each CLI provider runs.
-var cliBins = map[storage.ProviderKind]string{storage.ProviderClaudeCLI: "claude", storage.ProviderCodexCLI: "codex", storage.ProviderGeminiCLI: "gemini", storage.ProviderAntigravityCLI: "agy"}
+var cliBins = map[storage.ProviderKind]string{storage.ProviderClaudeCLI: "claude", storage.ProviderCodexCLI: "codex", storage.ProviderGeminiCLI: "gemini", storage.ProviderAntigravityCLI: "agy", storage.ProviderOpenCodeCLI: "opencode"}
 
 // CLIBin returns the binary a CLI provider runs (explicit path, or the resolver's
 // lookup, or the bare command name).
@@ -353,6 +353,8 @@ func cliToolOf(p storage.Provider) string {
 		return "gemini"
 	case storage.ProviderAntigravityCLI:
 		return "antigravity"
+	case storage.ProviderOpenCodeCLI:
+		return "opencode"
 	}
 	return ""
 }

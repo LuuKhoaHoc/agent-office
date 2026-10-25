@@ -139,6 +139,7 @@ export type Effort = typeof EFFORTS[number]
 // the levels a model takes on a connection (storage.EffortsFor): Antigravity
 // names it in the model (gemini-3.8-flash-high), so only its default model picks one
 export function effortsFor(kind: string | undefined, model: string | undefined): readonly string[] {
+  if (kind === 'opencode_cli') return [] // the model names its variant
   if (kind === 'antigravity_cli') return model ? [] : EFFORTS.slice(0, 3)
   return EFFORTS
 }

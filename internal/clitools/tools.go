@@ -172,12 +172,39 @@ var tools = []Tool{
 			return err == nil
 		},
 	},
+	{
+		// OpenCode signs in per provider (a menu); providers in opencode.json
+		// count too, so status asks which models it can reach
+		ID: "opencode", Name: "OpenCode", Bin: "opencode", DocsURL: "https://opencode.ai/docs/cli/",
+		LoginCmd: "opencode auth login", loginArgv: []string{"opencode", "auth", "login"},
+		LogoutCmd: "opencode auth logout",
+		methods: []Method{
+			{ID: "curl", Label: "Script cài đặt", Command: "curl -fsSL https://opencode.ai/install | bash", Requires: "curl", Recommended: true,
+				argv: []string{"/bin/sh", "-c", "curl -fsSL https://opencode.ai/install | bash"}},
+			{ID: "npm", Label: "npm", Command: "npm install -g opencode-ai", Requires: "npm",
+				argv: []string{"npm", "install", "-g", "opencode-ai"}},
+			{ID: "brew", Label: "Homebrew", Command: "brew install sst/tap/opencode", Requires: "brew",
+				argv: []string{"brew", "install", "sst/tap/opencode"}},
+		},
+		status: opencodeStatus,
+		loginDone: func(ctx context.Context, bin string, env []string) bool {
+			_, err := llm.OpenCodeModels(ctx, bin, env)
+			return err == nil
+		},
+	},
 }
 
 // antigravityStatus asks Antigravity CLI for its models, which needs a
 // signed-in account; it has no status subcommand.
 func antigravityStatus(ctx context.Context, bin string, env []string) Auth {
 	if _, err := llm.AntigravityModels(ctx, bin, env); err != nil {
+		return Auth{Detail: err.Error()}
+	}
+	return Auth{LoggedIn: true}
+}
+
+func opencodeStatus(ctx context.Context, bin string, env []string) Auth {
+	if _, err := llm.OpenCodeModels(ctx, bin, env); err != nil {
 		return Auth{Detail: err.Error()}
 	}
 	return Auth{LoggedIn: true}

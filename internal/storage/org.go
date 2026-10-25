@@ -20,12 +20,13 @@ const (
 	ProviderCodexCLI         ProviderKind = "codex_cli"         // local `codex exec`
 	ProviderGeminiCLI        ProviderKind = "gemini_cli"        // local `gemini` (headless)
 	ProviderAntigravityCLI   ProviderKind = "antigravity_cli"   // local `agy` (print mode)
+	ProviderOpenCodeCLI      ProviderKind = "opencode_cli"      // local `opencode run`
 )
 
 // Valid reports whether k is known.
 func (k ProviderKind) Valid() bool {
 	switch k {
-	case ProviderAnthropic, ProviderOpenAI, ProviderOpenAICompatible, ProviderClaudeCLI, ProviderCodexCLI, ProviderGeminiCLI, ProviderAntigravityCLI:
+	case ProviderAnthropic, ProviderOpenAI, ProviderOpenAICompatible, ProviderClaudeCLI, ProviderCodexCLI, ProviderGeminiCLI, ProviderAntigravityCLI, ProviderOpenCodeCLI:
 		return true
 	}
 	return false
@@ -33,7 +34,7 @@ func (k ProviderKind) Valid() bool {
 
 // IsCLI reports whether the provider runs a local binary instead of an HTTP API.
 func (k ProviderKind) IsCLI() bool {
-	return k == ProviderClaudeCLI || k == ProviderCodexCLI || k == ProviderGeminiCLI || k == ProviderAntigravityCLI
+	return k == ProviderClaudeCLI || k == ProviderCodexCLI || k == ProviderGeminiCLI || k == ProviderAntigravityCLI || k == ProviderOpenCodeCLI
 }
 
 // cliHomeEnv is the variable that moves each CLI's config and credentials
@@ -171,6 +172,9 @@ func ValidEffort(e string) bool { return e == "" || slices.Contains(Efforts, e) 
 // (gemini-3.8-flash-high) or takes none (claude-sonnet-4-6): only its own
 // default model picks one, up to high.
 func EffortsFor(kind ProviderKind, model string) []string {
+	if kind == ProviderOpenCodeCLI {
+		return nil // the model names its variant (provider/model#variant)
+	}
 	if kind == ProviderAntigravityCLI {
 		if model != "" {
 			return nil

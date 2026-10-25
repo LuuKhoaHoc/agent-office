@@ -29,7 +29,7 @@ interface ToolStatus {
 }
 
 // provider: the connection whose account it is (one signed in to an account of its own, ADR-178)
-const props = defineProps<{ tool: 'claude' | 'codex' | 'gemini' | 'antigravity', provider?: string }>()
+const props = defineProps<{ tool: 'claude' | 'codex' | 'gemini' | 'antigravity' | 'opencode', provider?: string }>()
 const emit = defineEmits<{ ready: [boolean] }>()
 const toast = useToast()
 const { t } = useLang()

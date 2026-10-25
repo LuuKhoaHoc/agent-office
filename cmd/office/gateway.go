@@ -63,7 +63,7 @@ func gatewayIdentify(st storage.Store, mcp *mcpserver.Server) func(r *http.Reque
 			return mcpgateway.Caller{}, false
 		}
 		kind := r.Header.Get(chat.ClientHeader)
-		if kind != "codex" && kind != "gemini" && kind != "antigravity" {
+		if kind != "codex" && kind != "gemini" && kind != "antigravity" && kind != "opencode" {
 			kind = "claude"
 		}
 		return gatewayCaller(r.Context(), st, sc, kind), true

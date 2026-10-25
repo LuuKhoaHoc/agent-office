@@ -806,6 +806,143 @@ func (c *antigravityCLI) Complete(ctx context.Context, req Request) (Result, err
 		InputTokens: res.Usage.InputTokens + res.Usage.CacheReadTokens, OutputTokens: res.Usage.OutputTokens + res.Usage.ThinkingTokens}, nil
 }
 
+// ---- OpenCode ----
+
+type opencodeCLI struct{ bin string }
+
+// OpenCodeModels lists the provider/model ids OpenCode can use (`opencode
+// models`); none means no provider is set up yet.
+func OpenCodeModels(ctx context.Context, bin string, env []string) ([]string, error) {
+	out, err := runEnv(ctx, bin, "", env, "models")
+	if err != nil {
+		return nil, err
+	}
+	var models []string
+	for _, l := range strings.Split(out, "\n") {
+		if l = strings.TrimSpace(l); strings.Contains(l, "/") && !strings.ContainsAny(l, " \t") && !slices.Contains(models, l) {
+			models = append(models, l)
+		}
+	}
+	if len(models) == 0 {
+		return nil, fmt.Errorf("%w: chạy `opencode auth login` để thêm nhà cung cấp cho OpenCode", ErrNeedsLogin)
+	}
+	return models, nil
+}
+
+// OpenCodeAccess is the OPENCODE_CONFIG_CONTENT a run gets: OpenCode asks
+// no one in `run`, so what a run may not do is denied up front. Reads only,
+// edits too (commands stay denied, like Antigravity's accept-edits), or no
+// tools at all; full access sets nothing and passes --auto instead.
+func OpenCodeAccess(write, noTools, noSubagents bool) string {
+	perm := map[string]string{"edit": "deny", "bash": "deny"}
+	if write {
+		perm["edit"] = "allow"
+	}
+	if noTools {
+		perm = map[string]string{"*": "deny"}
+	}
+	if noSubagents && !noTools {
+		perm["task"] = "deny"
+	}
+	b, _ := json.Marshal(map[string]any{"permission": perm})
+	return "OPENCODE_CONFIG_CONTENT=" + string(b)
+}
+
+// OpenCodeEvent is one line of `opencode run --format json`.
+type OpenCodeEvent struct {
+	Type      string `json:"type"` // step_start | text | tool_use | step_finish | error
+	SessionID string `json:"sessionID"`
+	Part      struct {
+		ID     string `json:"id"`
+		Text   string `json:"text"`
+		Tool   string `json:"tool"`
+		Reason string `json:"reason"`
+		State  struct {
+			Status string          `json:"status"`
+			Input  json.RawMessage `json:"input"`
+			Error  string          `json:"error"`
+		} `json:"state"`
+		Tokens struct {
+			Input     int `json:"input"`
+			Output    int `json:"output"`
+			Reasoning int `json:"reasoning"`
+			Cache     struct {
+				Read int `json:"read"`
+			} `json:"cache"`
+		} `json:"tokens"`
+	} `json:"part"`
+	Error struct {
+		Type    string `json:"type"`
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+// OpenCodeArgs starts one headless turn: a private server (so the
+// environment's permissions hold, not a shared background one), JSON out.
+func OpenCodeArgs(model, session string) []string {
+	args := []string{"run", "--standalone", "--format", "json"}
+	if model != "" {
+		args = append(args, "--model", model)
+	}
+	if session != "" {
+		args = append(args, "--session", session)
+	}
+	return args
+}
+
+func (c *opencodeCLI) Check(ctx context.Context) (CheckResult, error) {
+	out, err := run(ctx, c.bin, "", "--version")
+	if err != nil {
+		return CheckResult{}, err
+	}
+	v := strings.TrimSpace(out)
+	models, err := OpenCodeModels(ctx, c.bin, nil)
+	if err != nil {
+		return CheckResult{}, fmt.Errorf("%s · %w", v, err)
+	}
+	return CheckResult{Version: v, Models: models, Detail: v}, nil
+}
+
+func (c *opencodeCLI) Complete(ctx context.Context, req Request) (Result, error) {
+	start := time.Now()
+	prompt := req.Prompt
+	if req.System != "" {
+		prompt = req.System + "\n\n" + req.Prompt
+	}
+	out, err := runEnv(ctx, c.bin, prompt, []string{OpenCodeAccess(false, false, true)}, OpenCodeArgs(req.Model, "")...)
+	var text strings.Builder
+	var failure string
+	res := Result{Model: req.Model}
+	for _, l := range strings.Split(out, "\n") {
+		var ev OpenCodeEvent
+		if json.Unmarshal([]byte(l), &ev) != nil {
+			continue
+		}
+		switch ev.Type {
+		case "text":
+			text.WriteString(ev.Part.Text)
+		case "step_finish":
+			t := ev.Part.Tokens
+			res.InputTokens += t.Input + t.Cache.Read
+			res.OutputTokens += t.Output + t.Reasoning
+		case "error":
+			failure = cmp.Or(ev.Error.Message, ev.Error.Type)
+		}
+	}
+	res.Text = strings.TrimSpace(text.String())
+	res.DurationMS = time.Since(start).Milliseconds()
+	if res.Text == "" {
+		if failure != "" {
+			return Result{}, fmt.Errorf("opencode: %s", clip(failure, 400))
+		}
+		if err != nil {
+			return Result{}, err
+		}
+		return Result{}, errors.New("opencode: không có câu trả lời")
+	}
+	return res, nil
+}
+
 // lastJSONObject returns the last line that looks like a JSON object, since
 // CLIs may print warnings before the result.
 func lastJSONObject(out string) string {

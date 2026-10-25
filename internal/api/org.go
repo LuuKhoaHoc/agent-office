@@ -342,7 +342,7 @@ func (s *server) providerKinds(w http.ResponseWriter, r *http.Request) {
 			BaseURLHint: hint, TierModels: llm.DefaultTierModels(kind), Detected: d}
 	}
 	// each CLI runs --version; detect them together so the page waits for the slowest only
-	tools := []string{"claude", "codex", "gemini", "antigravity"}
+	tools := []string{"claude", "codex", "gemini", "antigravity", "opencode"}
 	found := make([]*detected, len(tools))
 	var wg sync.WaitGroup
 	for i, id := range tools {
@@ -369,6 +369,9 @@ func (s *server) providerKinds(w http.ResponseWriter, r *http.Request) {
 		k(storage.ProviderAntigravityCLI, "Antigravity CLI trên máy",
 			"Dùng tài khoản Google (gói Google AI Pro/Ultra hoặc miễn phí) đã đăng nhập trong Antigravity CLI trên máy này. Không cần API key.",
 			"agy", false, false, found[3]),
+		k(storage.ProviderOpenCodeCLI, "OpenCode trên máy",
+			"Dùng các nhà cung cấp đã cấu hình trong OpenCode trên máy này (opencode auth login hoặc opencode.json). Model ghi dạng provider/model.",
+			"opencode", false, false, found[4]),
 		k(storage.ProviderOpenAICompatible, "API tương thích OpenAI",
 			"Model chạy local hoặc cổng trung gian: Ollama, LM Studio, vLLM, OpenRouter, LiteLLM…",
 			"http://localhost:11434/v1", false, false, nil),

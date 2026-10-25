@@ -89,6 +89,8 @@ func New(p storage.Provider, apiKey string, opts Options) (Client, error) {
 		return &geminiCLI{bin: orDefault(p.BaseURL, "gemini"), env: p.CLIEnv()}, nil
 	case storage.ProviderAntigravityCLI:
 		return &antigravityCLI{bin: orDefault(p.BaseURL, "agy")}, nil
+	case storage.ProviderOpenCodeCLI:
+		return &opencodeCLI{bin: orDefault(p.BaseURL, "opencode")}, nil
 	}
 	return nil, fmt.Errorf("llm: unknown provider kind %q", p.Kind)
 }
